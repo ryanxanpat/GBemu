@@ -6,6 +6,8 @@
 
 #include "cpu.h"
 
+#define DEBUG 1
+
 CpuState* InitCpu()
 {
 	CpuState *cpu = (CpuState *) malloc(sizeof(CpuState));
@@ -25,7 +27,6 @@ CpuState* InitCpu()
 		return NULL;
 	}
 
-	cpu->sp = 0xFFFE;
 	memset(cpu->memory, 0, MEMORY_SIZE);
 
 	FILE* rom = fopen("roms/boot.gb", "rb");
@@ -36,7 +37,7 @@ CpuState* InitCpu()
 		free(cpu);
 		return NULL;
 	}
-	printf("Opened bootstrap rom\n");
+	printf("Opened bootstrap rom\n\n");
 
 	if (!fgets(cpu->memory, 257, rom))
 	{
@@ -48,32 +49,9 @@ CpuState* InitCpu()
 
 	fclose(rom);
 
-	// rom = fopen(romPath, "rb");
-	// if (rom == NULL)
-	// {
-	// 	printf("Could not open rom\n");
-	// 	return 0;
-	// }
-	// printf("Opened rom: %s\n\n", romPath);
-
-	// This needs to be changed later
-	// fseek(rom, 0, SEEK_END);
-	// uint32_t codeSize = ftell(rom);
-	// fseek(rom, 0, SEEK_SET);
-	// if (!fgets(memory, codeSize, rom))
-	// {
-	// 	printf("Couldn't read ROM into memory\n");
-	// 	return false;
-	// }
-
 	DumpMemory(cpu->memory, 0, 300);
-	//DumpInstructions(memory, 0, 50);
+	PrintContext(cpu);
 
-	// fclose(rom);
-
-	// ParseRomHeader(memory);
-
-	// Need to return reference to memory somehow. Also need to free memory later
 	return cpu;
 }
 
@@ -91,13 +69,20 @@ void DumpMemory(uint8_t* memory, uint16_t start, uint16_t size)
 	     	t = 0;
 	     }
 	}
-	printf("\n");
+	printf("\n\n");
 }
 
 void Emulate(CpuState* cpu)
 {
-	uint8_t *opCode = &cpu->memory[cpu->pc];
+	if (DEBUG)
+	{
+		//printf("Addr      Op      Instruction\n");
+		printf("Executing: ");
+		Disassemble(cpu->memory, cpu->pc);
+		printf("\n");
+	}
 
+	uint8_t *opCode = &cpu->memory[cpu->pc];
 	switch (*opCode)
 	{
 		case 0x00: break;
@@ -153,7 +138,11 @@ void Emulate(CpuState* cpu)
 
 
 		case 0x20: UnimplementedInstruction(cpu); break;
-		case 0x21: UnimplementedInstruction(cpu); break;
+		case 0x21: // LD HL, d16
+			cpu->h = opCode[2]; // 50% chance this is right
+			cpu->l = opCode[1];
+			cpu->pc += 2;
+			break;
 		case 0x22: UnimplementedInstruction(cpu); break;
 		case 0x23: UnimplementedInstruction(cpu); break;
 		case 0x24: cpu->h++; break;
@@ -177,7 +166,10 @@ void Emulate(CpuState* cpu)
 
 
 		case 0x30: UnimplementedInstruction(cpu); break;
-		case 0x31: UnimplementedInstruction(cpu); break;
+		case 0x31:
+			cpu->sp = (opCode[2] << 8) | opCode[1];
+			cpu->pc += 2;
+			break;
 		case 0x32: UnimplementedInstruction(cpu); break;
 		case 0x33: cpu->sp++; break;
 		case 0x34: UnimplementedInstruction(cpu); break;
@@ -309,35 +301,147 @@ void Emulate(CpuState* cpu)
 		case 0x9C:
 		case 0x9D:
 		case 0x9E:
-		case 0x9F:
+		case 0x9F: UnimplementedInstruction(cpu); break;
 
 
 		case 0xA0:
+			cpu->a &= cpu->b;
+			memset(&cpu->flags, 0, sizeof(cpu->flags));
+			if (cpu->a == 0)
+				cpu->flags.z = 1;
+			cpu->flags.h = 1;
+			break;
 		case 0xA1:
+			cpu->a &= cpu->c;
+			memset(&cpu->flags, 0, sizeof(cpu->flags));
+			if (cpu->a == 0)
+				cpu->flags.z = 1;
+			cpu->flags.h = 1;
+			break;
 		case 0xA2:
+			cpu->a &= cpu->d;
+			memset(&cpu->flags, 0, sizeof(cpu->flags));
+			if (cpu->a == 0)
+				cpu->flags.z = 1;
+			cpu->flags.h = 1;
+			break;
 		case 0xA3:
+			cpu->a &= cpu->e;
+			memset(&cpu->flags, 0, sizeof(cpu->flags));
+			if (cpu->a == 0)
+				cpu->flags.z = 1;
+			cpu->flags.h = 1;
+			break;
 		case 0xA4:
+			cpu->a &= cpu->h;
+			memset(&cpu->flags, 0, sizeof(cpu->flags));
+			if (cpu->a == 0)
+				cpu->flags.z = 1;
+			cpu->flags.h = 1;
+			break;
 		case 0xA5:
-		case 0xA6:
+			cpu->a &= cpu->l;
+			memset(&cpu->flags, 0, sizeof(cpu->flags));
+			if (cpu->a == 0)
+				cpu->flags.z = 1;
+			cpu->flags.h = 1;
+			break;
+		case 0xA6: UnimplementedInstruction(cpu); break;
 		case 0xA7:
-		case 0xA8:
+			cpu->a &= cpu->a;
+			memset(&cpu->flags, 0, sizeof(cpu->flags));
+			if (cpu->a == 0)
+				cpu->flags.z = 1;
+			cpu->flags.h = 1;
+			break;
+		case 0xA8: UnimplementedInstruction(cpu); break;
+			cpu->a ^= cpu->b;
+			memset(&cpu->flags, 0, sizeof(cpu->flags));
+			if (cpu->a == 0)
+				cpu->flags.z = 1;
+			break;
 		case 0xA9:
+			cpu->a ^= cpu->c;
+			memset(&cpu->flags, 0, sizeof(cpu->flags));
+			if (cpu->a == 0)
+				cpu->flags.z = 1;
+			break;
 		case 0xAA:
+			cpu->a ^= cpu->d;
+			memset(&cpu->flags, 0, sizeof(cpu->flags));
+			if (cpu->a == 0)
+				cpu->flags.z = 1;
+			break;
 		case 0xAB:
+			cpu->a ^= cpu->e;
+			memset(&cpu->flags, 0, sizeof(cpu->flags));
+			if (cpu->a == 0)
+				cpu->flags.z = 1;
+			break;
 		case 0xAC:
+			cpu->a ^= cpu->h;
+			memset(&cpu->flags, 0, sizeof(cpu->flags));
+			if (cpu->a == 0)
+				cpu->flags.z = 1;
+			break;
 		case 0xAD:
-		case 0xAE:
+			cpu->a ^= cpu->l;
+			memset(&cpu->flags, 0, sizeof(cpu->flags));
+			if (cpu->a == 0)
+				cpu->flags.z = 1;
+			break;
+		case 0xAE: UnimplementedInstruction(cpu); break;
 		case 0xAF:
+			cpu->a ^= cpu->a;
+			memset(&cpu->flags, 0, sizeof(cpu->flags));
+			if (cpu->a == 0)
+				cpu->flags.z = 1;
+			break;
 
 
 		case 0xB0:
+			cpu->a |= cpu->b;
+			memset(&cpu->flags, 0, sizeof(cpu->flags));
+			if (cpu->a == 0)
+				cpu->flags.z = 1;
+			break;
 		case 0xB1:
+			cpu->a |= cpu->c;
+			memset(&cpu->flags, 0, sizeof(cpu->flags));
+			if (cpu->a == 0)
+				cpu->flags.z = 1;
+			break;
 		case 0xB2:
+			cpu->a |= cpu->d;
+			memset(&cpu->flags, 0, sizeof(cpu->flags));
+			if (cpu->a == 0)
+				cpu->flags.z = 1;
+			break;
 		case 0xB3:
+			cpu->a |= cpu->e;
+			memset(&cpu->flags, 0, sizeof(cpu->flags));
+			if (cpu->a == 0)
+				cpu->flags.z = 1;
+			break;
 		case 0xB4:
+			cpu->a |= cpu->h;
+			memset(&cpu->flags, 0, sizeof(cpu->flags));
+			if (cpu->a == 0)
+				cpu->flags.z = 1;
+			break;
 		case 0xB5:
-		case 0xB6:
+			cpu->a |= cpu->l;
+			memset(&cpu->flags, 0, sizeof(cpu->flags));
+			if (cpu->a == 0)
+				cpu->flags.z = 1;
+			break;
+		case 0xB6: UnimplementedInstruction(cpu); break;
 		case 0xB7:
+			cpu->a |= cpu->a;
+			memset(&cpu->flags, 0, sizeof(cpu->flags));
+			if (cpu->a == 0)
+				cpu->flags.z = 1;
+			break;
 		case 0xB8:
 		case 0xB9:
 		case 0xBA:
@@ -410,7 +514,19 @@ void Emulate(CpuState* cpu)
 
 		default:   UnimplementedInstruction(cpu); break;
 	}
+
 	cpu->pc++;
+
+	if (DEBUG)
+		PrintContext(cpu);
+}
+
+void PrintContext(CpuState* cpu)
+{
+	printf("a = 0x%02X  b = 0x%02X  c = 0x%02X  d = 0x%02X\n", cpu->a, cpu->b, cpu->c, cpu->d);
+	printf("e = 0x%02X  f = 0x%02X  h = 0x%02X  l = 0x%02X\n", cpu->e, cpu->f, cpu->h, cpu->l);
+	printf("Flags: Z:%d N:%d H:%d C:%d\n", cpu->flags.z, cpu->flags.n, cpu->flags.h, cpu->flags.c);
+	printf("sp = 0x%04X  pc = 0x%04X\n\n", cpu->sp, cpu->pc);
 }
 
 void UnimplementedInstruction(CpuState* cpu)
@@ -424,7 +540,9 @@ uint8_t Disassemble(uint8_t *codeBuffer, uint16_t pc)
 	uint8_t *opCode = &codeBuffer[pc];
 	uint8_t opBytes;
 
-	printf("0x%04X    ", pc);
+	uint16_t imm;
+
+	printf("0x%04X    0x%x    ", pc, *opCode);
 	switch(*opCode)
 	{
 		case 0x00:
@@ -527,7 +645,7 @@ uint8_t Disassemble(uint8_t *codeBuffer, uint16_t pc)
 			printf("JR NZ, r8\n");
 			return 2;
 		case 0x21:
-			printf("LD HL, d16\n");
+			printf("LD HL, 0x%04X\n", (opCode[2] << 8) | opCode[1]);
 			return 3;
 		case 0x22:
 			printf("LD LD (HL+), A\n");
@@ -575,7 +693,7 @@ uint8_t Disassemble(uint8_t *codeBuffer, uint16_t pc)
 			printf("JR NC, r8\n");
 			return 2;
 		case 0x31:
-			printf("LD SP, d16\n");
+			printf("LD SP, 0x%04X\n", (opCode[2] << 8) | opCode[1]);
 			return 3;
 		case 0x32:
 			printf("LD (HL-), A\n");

@@ -5,6 +5,14 @@
 #define RAMSIZE			32000
 #define	VRAMSIZE		16000
 
+typedef struct CpuFlags {
+	uint8_t z:1; // Zero
+	uint8_t n:1; // Subtract
+	uint8_t h:1; // Half Carry
+	uint8_t c:1; // Carry
+	uint8_t pad:4; // Not Used
+} CpuFlags;
+
 typedef struct CpuState {
 	uint8_t a;
 	uint8_t b;
@@ -16,7 +24,7 @@ typedef struct CpuState {
 	uint8_t l;
 	uint16_t sp;
 	uint16_t pc;
-	uint8_t flags; // Bit 7-Zero Flag, 6-N (Subtract Flag), 5-H (Half Carry Flag), 4-Carry
+	CpuFlags flags;
 
 	uint8_t *memory;
 } CpuState;

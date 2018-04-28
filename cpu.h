@@ -6,6 +6,7 @@
 CpuState* InitCpu();
 void DumpMemory(uint8_t* memory, uint16_t start, uint16_t size);
 void Emulate(CpuState* cpu);
+void PrintContext(CpuState* cpu);
 void UnimplementedInstruction(CpuState* cpu);
 uint8_t Disassemble(uint8_t *codeBuffer, uint16_t pc);
 

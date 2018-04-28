@@ -34,6 +34,17 @@ void Boot(char* rom)
 	CpuState *cpu = InitCpu();
 	if (cpu == NULL)
 		return;
+
+	char str;
+	while (true)
+	{
+		printf("Run instruction?\n");
+		scanf("%c", &str);
+		if (str == 'n' || str == 'N')
+			break;
+
+		Emulate(cpu);
+	}
 }
 
 const char* GetLicenseName(uint16_t code)
@@ -98,7 +109,7 @@ bool ParseRomHeader(uint8_t *memory)
 	uint16_t *doubleByte = (uint16_t *)&memory[0x144];
 	printf("License: %s\n", GetLicenseName(*doubleByte)); 
 
-	// Super Features GameBoy Byte
+	// Super GameBoy Features Byte
 	uint8_t *byte = &memory[0x146];
 	if (*byte == 0x3)
 		printf("This ROM uses Super GameBoy Features\n");
